@@ -7,6 +7,8 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
+import java.util.List;
+
 @Mapper(componentModel = "spring",
         unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface StudentDtoMapper {
@@ -15,4 +17,5 @@ public interface StudentDtoMapper {
     @Mapping(target = "updated_at", ignore = true)
     Student toEntity(StudentRequestDTO studentRequestDTO);
     StudentResponseDTO toResponseDTO(Student student);
+    List<StudentResponseDTO> toResponseDTOList(List<Student> student);
 }
