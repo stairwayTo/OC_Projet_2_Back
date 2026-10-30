@@ -27,7 +27,6 @@ public class UserServiceTest {
     private static final String HASHED_PASSWORD = "HASHED_PASSWORD";
     private static final String TOKEN = "TOKEN";
 
-
     @Mock
     private UserRepository userRepository;
     @Mock
@@ -36,7 +35,6 @@ public class UserServiceTest {
     private JwtService jwtService;
     @InjectMocks
     private UserService userService;
-
 
     private User buildUser() {
         User user = new User();
@@ -57,7 +55,7 @@ public class UserServiceTest {
     }
 
     @Test
-    public void register_already_exist_user_throws_IllegalArgumentException() {
+    public void register_user_already_exist_throws_IllegalArgumentException() {
         // GIVEN
         User user = buildUser();
         when(userRepository.findByLogin(any())).thenReturn(Optional.of(user));
@@ -83,6 +81,7 @@ public class UserServiceTest {
         assertThat(userCaptor.getValue().getPassword()).isEqualTo(HASHED_PASSWORD);
         assertThat(userCaptor.getValue()).isEqualTo(user);
     }
+
     @Test
     public void login_null_login_throws_IllegalArgumentException() {
         // GIVEN
@@ -91,6 +90,7 @@ public class UserServiceTest {
         Assertions.assertThrows(IllegalArgumentException.class,
                 () -> userService.login(null, PASSWORD));
     }
+
     @Test
     public void login_null_password_throws_IllegalArgumentException() {
         // GIVEN
@@ -122,6 +122,7 @@ public class UserServiceTest {
         Assertions.assertThrows(IllegalArgumentException.class,
                 () -> userService.login(LOGIN, PASSWORD));
     }
+
     @Test
     public void login_happy_path() {
         // GIVEN
