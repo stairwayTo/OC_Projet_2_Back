@@ -1,6 +1,7 @@
 package com.openclassrooms.etudiant.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.openclassrooms.etudiant.dto.StudentRequestDTO;
 import com.openclassrooms.etudiant.entities.Student;
 import com.openclassrooms.etudiant.repository.StudentRepository;
 import com.openclassrooms.etudiant.service.StudentService;
@@ -19,6 +20,7 @@ import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
@@ -52,6 +54,18 @@ class StudentControllerTest {
         studentService.create(student);
     }
 
+    private StudentRequestDTO buildStudentRequestDTO() {
+        StudentRequestDTO studentRequestDTO = new StudentRequestDTO();
+        studentRequestDTO.setFirstName(FIRST_NAME);
+        studentRequestDTO.setLastName(LAST_NAME);
+        studentRequestDTO.setEmail(EMAIL);
+        return studentRequestDTO;
+    }
+
+    private Long getSavedStudentId() {
+        return studentRepository.findByEmail(EMAIL).orElseThrow().getId();
+    }
+
     @DynamicPropertySource
     static void configureTestProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", () -> mySQLContainer.getJdbcUrl());
@@ -67,7 +81,21 @@ class StudentControllerTest {
     }
 
     @Test
-    void create() {
+    void createStudentWithToken_returnsCreatedAndSavesStudent() throws Exception {
+        // GIVEN
+        StudentRequestDTO studentRequestDTO = buildStudentRequestDTO();
+
+        // WHEN
+        mockMvc.perform(MockMvcRequestBuilders.post(STUDENTS_URL)
+                        .with(jwt())
+                        .content(objectMapper.writeValueAsString(studentRequestDTO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andDo(print())
+                // THEN
+                .andExpect(MockMvcResultMatchers.status().isCreated());
+
+        assertThat(studentRepository.findByEmail(EMAIL)).isPresent();
     }
 
     @Test
@@ -87,14 +115,66 @@ class StudentControllerTest {
     }
 
     @Test
-    void findById() {
+    void getStudentByIdWithToken_returnsStudent() throws Exception {
+        // GIVEN
+        registerStudentInDatabase();
+        Long id = getSavedStudentId();
+
+        // WHEN
+        mockMvc.perform(MockMvcRequestBuilders.get(STUDENTS_URL + "/" + id)
+                        .with(jwt())
+                        .accept(MediaType.APPLICATION_JSON))
+                .andDo(print())
+                // THEN
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.id").value(id))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.email").value(EMAIL));
     }
 
     @Test
-    void deleteById() {
+    void deleteStudentWithToken_returnsNoContentAndRemovesStudent() throws Exception {
+        // GIVEN
+        registerStudentInDatabase();
+        Long id = getSavedStudentId();
+
+        // WHEN
+        mockMvc.perform(MockMvcRequestBuilders.delete(STUDENTS_URL + "/" + id)
+                        .with(jwt()))
+                .andDo(print())
+                // THEN
+                .andExpect(MockMvcResultMatchers.status().isNoContent());
+
+        assertThat(studentRepository.findById(id)).isEmpty();
     }
 
     @Test
-    void updateById() {
+    void updateStudentWithToken_returnsUpdatedStudent() throws Exception {
+        // GIVEN
+        registerStudentInDatabase();
+        Long id = getSavedStudentId();
+        StudentRequestDTO studentRequestDTO = buildStudentRequestDTO();
+        studentRequestDTO.setFirstName("new_first_name");
+
+        // WHEN
+        mockMvc.perform(MockMvcRequestBuilders.put(STUDENTS_URL + "/" + id)
+                        .with(jwt())
+                        .content(objectMapper.writeValueAsString(studentRequestDTO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andDo(print())
+                // THEN
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.id").value(id))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.firstName").value("new_first_name"));
+    }
+
+    @Test
+    void getAllStudentsWithoutToken_returnsUnauthorized() throws Exception {
+        // WHEN
+        mockMvc.perform(MockMvcRequestBuilders.get(STUDENTS_URL)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andDo(print())
+                // THEN
+                .andExpect(MockMvcResultMatchers.status().isUnauthorized());
     }
 }
